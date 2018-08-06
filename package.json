@@ -1,9 +1,9 @@
 {
-  "name": "@36node/whisper",
+  "name": "@36node/telegram",
   "version": "0.1.1",
   "description": "A module for parsing binary in buffer.",
   "repository": {
-    "url": "36node/whisper",
+    "url": "36node/telegram",
     "type": "git"
   },
   "license": "MIT",
