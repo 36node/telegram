@@ -2,7 +2,7 @@ import { PRIMITIVE_TYPES, BIT_RANGE, NAME_MAP } from "./const";
 
 const has = Object.prototype.hasOwnProperty;
 
-export default class Whisper {
+export default class Telegram {
   constructor() {
     this.chain = [];
     this.bitChain = [];
@@ -84,10 +84,10 @@ export default class Whisper {
     if (!options.type) {
       throw new Error("Type option of nest is not defined.");
     }
-    if (!(options.type instanceof Whisper)) {
+    if (!(options.type instanceof Telegram)) {
       throw new Error("Type option of nest must be a Parser object.");
     }
-    if (!(options.type instanceof Whisper) && !varName) {
+    if (!(options.type instanceof Telegram) && !varName) {
       throw new Error("options.type must be a object if variable name is omitted.");
     }
 
@@ -333,7 +333,7 @@ class nest extends Processor {
     const {
       options: { type }
     } = this.item;
-    if (type instanceof Whisper) {
+    if (type instanceof Telegram) {
       const { result: new_result } = type.parse(this.buf, {});
       this.ownResult = new_result;
     }
@@ -369,8 +369,8 @@ class array extends Processor {
     if (typeof type === "string") {
       this.typeName = "PRIMITIVE_TYPES";
       this.type = NAME_MAP[type];
-    } else if (type instanceof Whisper) {
-      this.typeName = "WHISPER";
+    } else if (type instanceof Telegram) {
+      this.typeName = "Telegram";
       this.type = type;
     }
   }
@@ -398,7 +398,7 @@ class array extends Processor {
       case "PRIMITIVE_TYPES":
         this.ownItemResult = buffer[`read${this.type}`](offset);
         break;
-      case "WHISPER":
+      case "Telegram":
         const { result: new_result } = this.type.parse(this.buf, {});
         this.ownItemResult = new_result;
         break;

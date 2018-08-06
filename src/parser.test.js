@@ -1,6 +1,6 @@
-import Whisper from "./parser";
+import Telegram from "./parser";
 
-const tcpHeader = new Whisper()
+const tcpHeader = new Telegram()
   .endianess("big")
   .uint16("srcPort")
   .uint16("dstPort")
@@ -9,7 +9,7 @@ const tcpHeader = new Whisper()
   .bit4("dataOffset")
   .bit6("reserved")
   .nest("flags", {
-    type: new Whisper()
+    type: new Telegram()
       .bit1("urg")
       .bit1("ack")
       .bit1("psh")

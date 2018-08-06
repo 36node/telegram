@@ -1,6 +1,6 @@
-import Whisper from "../src";
+import Telegram from "../src";
 
-const ipHeader = new Whisper()
+const ipHeader = new Telegram()
   .endianess("big")
   .bit4("version")
   .bit4("headerLength")

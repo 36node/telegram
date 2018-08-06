@@ -1,3 +1,3 @@
-import Whisper from "./parser";
+import Telegram from "./parser";
 
-export default Whisper;
+export default Telegram;
