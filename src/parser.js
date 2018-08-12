@@ -56,7 +56,7 @@ export default class Telegram {
       throw new Error("Length or greedy must be defined if stripNull is defined.");
     }
 
-    options.encoding = options.encoding || "utf8";
+    options.encoding = options.encoding || "ascii";
 
     return this.setNextParser("string", varName, options);
   }
@@ -280,7 +280,7 @@ class bits extends Processor {
   realParseBit() {
     const { buffer, offset, bitOffset } = this.buf;
     const {
-      options: { length }
+      options: { length },
     } = this.bitItem;
     const byteToBeRead = Math.ceil((bitOffset + length) / 8);
     let tmp = 0;
@@ -320,7 +320,7 @@ class bits extends Processor {
   updateStatus() {
     const { bitOffset } = this.buf;
     const {
-      options: { length }
+      options: { length },
     } = this.bitItem;
     this.buf.bitOffset = (bitOffset + length) % 8;
     const carry = Math.floor((bitOffset + length) / 8);
@@ -331,7 +331,7 @@ class bits extends Processor {
 class nest extends Processor {
   realParse() {
     const {
-      options: { type }
+      options: { type },
     } = this.item;
     if (type instanceof Telegram) {
       const { result: new_result } = type.parse(this.buf, {});
@@ -364,7 +364,7 @@ class array extends Processor {
 
   defineType() {
     const {
-      options: { type }
+      options: { type },
     } = this.item;
     if (typeof type === "string") {
       this.typeName = "PRIMITIVE_TYPES";
@@ -378,7 +378,7 @@ class array extends Processor {
   realParse() {
     let i = 0;
     const {
-      options: { length }
+      options: { length },
     } = this.item;
     const arrayLength = typeof length === "number" ? length : this.result[length];
     for (i = 0; i < arrayLength; i++) {
@@ -425,9 +425,59 @@ class skip extends Processor {
 
   updateStatus() {
     const {
-      options: { length }
+      options: { length },
     } = this.item;
     this.buf.offset += length;
+  }
+}
+
+class string extends Processor {
+  constructor(options) {
+    super(options);
+    this.stringLength = null;
+    this.isZeroTerminated = false;
+  }
+
+  realParse() {
+    const {
+      options: { length, encoding, zeroTerminated, greedy },
+    } = this.item;
+    const { buffer, offset } = this.buf;
+    const start = offset;
+    if (length && zeroTerminated) {
+      let i = start;
+      for (i; i < start + length; i++) {
+        if (buffer.readUInt8(i) === 0) {
+          break;
+        }
+      }
+      this.stringLength = i - start;
+      this.isZeroTerminated = this.stringLength === length ? false : true;
+    } else if (length) {
+      this.stringLength = length;
+    } else if (zeroTerminated) {
+      let i = start;
+      for (i; i < buffer.length; i++) {
+        if (buffer.readUInt8(i) === 0) {
+          break;
+        }
+      }
+      this.stringLength = i - start;
+      this.isZeroTerminated = i === buffer.length ? false : true;
+    } else if (greedy) {
+      this.stringLength = buffer.length - start;
+    }
+    console.log(this.stringLength);
+    this.ownResult = buffer.toString(encoding, offset, offset + this.stringLength);
+  }
+
+  store() {
+    const { varName } = this.item;
+    this.result[varName] = this.ownResult;
+  }
+
+  updateStatus() {
+    this.buf.offset += this.isZeroTerminated ? this.stringLength + 1 : this.stringLength;
   }
 }
 
@@ -435,3 +485,4 @@ typeClasses.nest = nest;
 typeClasses.array = array;
 typeClasses.skip = skip;
 typeClasses.bits = bits;
+typeClasses.string = string;
