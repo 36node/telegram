@@ -288,7 +288,7 @@ class bits extends Processor {
   realParseBit() {
     const { buffer, offset, bitOffset } = this.buf;
     const {
-      options: { length }
+      options: { length },
     } = this.bitItem;
     const byteToBeRead = Math.ceil((bitOffset + length) / 8);
     let tmp = 0;
@@ -328,7 +328,7 @@ class bits extends Processor {
   updateStatus() {
     const { bitOffset } = this.buf;
     const {
-      options: { length }
+      options: { length },
     } = this.bitItem;
     this.buf.bitOffset = (bitOffset + length) % 8;
     const carry = Math.floor((bitOffset + length) / 8);
@@ -339,7 +339,7 @@ class bits extends Processor {
 class nest extends Processor {
   realParse() {
     const {
-      options: { type }
+      options: { type },
     } = this.item;
     if (type instanceof Telegram) {
       const { result: new_result } = type.parse(this.buf, {});
@@ -372,7 +372,7 @@ class array extends Processor {
 
   defineType() {
     const {
-      options: { type }
+      options: { type },
     } = this.item;
     if (typeof type === "string") {
       if (Object.keys(PRIMITIVE_TYPES).includes(NAME_MAP[type])) {
@@ -390,7 +390,7 @@ class array extends Processor {
   realParse() {
     let i = 0;
     const {
-      options: { length }
+      options: { length },
     } = this.item;
     const arrayLength = typeof length === "number" ? length : this.result[length];
     for (i = 0; i < arrayLength; i++) {
@@ -412,7 +412,7 @@ class array extends Processor {
         break;
       case "string":
         const {
-          options: { subOptions }
+          options: { subOptions },
         } = this.item;
         const stringParser = new Telegram().string("tmp", subOptions);
         const { result: str_result } = stringParser.parse(this.buf, {});
@@ -445,7 +445,7 @@ class skip extends Processor {
 
   updateStatus() {
     const {
-      options: { length }
+      options: { length },
     } = this.item;
     this.buf.offset += length;
   }
@@ -460,7 +460,7 @@ class string extends Processor {
 
   realParse() {
     const {
-      options: { length, encoding, zeroTerminated, greedy, stripNull }
+      options: { length, encoding, zeroTerminated, greedy, stripNull },
     } = this.item;
     const { buffer, offset } = this.buf;
 
