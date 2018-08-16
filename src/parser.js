@@ -68,7 +68,10 @@ export default class Telegram {
     if (!options.type) {
       throw new Error("Type option of array is not defined.");
     }
-    if (typeof options.type === "string" && !(has.call(PRIMITIVE_TYPES, NAME_MAP[options.type]) || options.type === "string")) {
+    if (
+      typeof options.type === "string" &&
+      !(has.call(PRIMITIVE_TYPES, NAME_MAP[options.type]) || options.type === "string")
+    ) {
       throw new Error(`Specified primitive type ${options.type} is not supported.`);
     }
 
