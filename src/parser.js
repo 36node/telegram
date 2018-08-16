@@ -412,7 +412,7 @@ class array extends Processor {
         break;
       case "string":
         const {
-          options: { subOptions },
+          options: { subOptions }
         } = this.item;
         const stringParser = new Telegram().string("tmp", subOptions);
         const { result: str_result } = stringParser.parse(this.buf, {});
@@ -460,7 +460,7 @@ class string extends Processor {
 
   realParse() {
     const {
-      options: { length, encoding, zeroTerminated, greedy, stripNull },
+      options: { length, encoding, zeroTerminated, greedy, stripNull }
     } = this.item;
     const { buffer, offset } = this.buf;
 
