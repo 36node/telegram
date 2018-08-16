@@ -68,7 +68,10 @@ export default class Telegram {
     if (!options.type) {
       throw new Error("Type option of array is not defined.");
     }
-    if (typeof options.type === "string" && !has.call(PRIMITIVE_TYPES, NAME_MAP[options.type])) {
+    if (
+      typeof options.type === "string" &&
+      !(has.call(PRIMITIVE_TYPES, NAME_MAP[options.type]) || options.type === "string")
+    ) {
       throw new Error(`Specified primitive type ${options.type} is not supported.`);
     }
 
@@ -123,9 +126,13 @@ export default class Telegram {
     return this;
   }
 
-  decompress(buffer) {
+  decompress(buffer, needLength = false) {
     const input = { buffer, offset: 0, bitOffset: 0 };
-    const { result } = this.parse(input, {});
+    const { buf, result } = this.parse(input, {});
+    if (needLength) {
+      const length = buf.offset;
+      return { result, length };
+    }
     return result;
   }
 
@@ -155,8 +162,8 @@ class Processor {
     this.item = item;
     this.initialize();
     this.realParse();
-    this.formatter();
     this.assert();
+    this.formatter();
     this.store();
     this.updateStatus();
   }
@@ -186,10 +193,11 @@ class Processor {
           isEqual = options.assert.call(this, this.ownResult);
           break;
         case "number":
+        case "string":
           isEqual = this.ownResult === options.assert;
           break;
         default:
-          throw new Error("Assert option supports only numbers and assert functions.");
+          throw new Error("Assert option supports only numbers and string and assert functions.");
       }
       if (!isEqual) {
         throw new Error(`Assert error: ${this.item.varName} is ${this.ownResult}`);
@@ -280,7 +288,7 @@ class bits extends Processor {
   realParseBit() {
     const { buffer, offset, bitOffset } = this.buf;
     const {
-      options: { length }
+      options: { length },
     } = this.bitItem;
     const byteToBeRead = Math.ceil((bitOffset + length) / 8);
     let tmp = 0;
@@ -320,7 +328,7 @@ class bits extends Processor {
   updateStatus() {
     const { bitOffset } = this.buf;
     const {
-      options: { length }
+      options: { length },
     } = this.bitItem;
     this.buf.bitOffset = (bitOffset + length) % 8;
     const carry = Math.floor((bitOffset + length) / 8);
@@ -331,7 +339,7 @@ class bits extends Processor {
 class nest extends Processor {
   realParse() {
     const {
-      options: { type }
+      options: { type },
     } = this.item;
     if (type instanceof Telegram) {
       const { result: new_result } = type.parse(this.buf, {});
@@ -364,10 +372,14 @@ class array extends Processor {
 
   defineType() {
     const {
-      options: { type }
+      options: { type },
     } = this.item;
     if (typeof type === "string") {
-      this.typeName = "PRIMITIVE_TYPES";
+      if (Object.keys(PRIMITIVE_TYPES).includes(NAME_MAP[type])) {
+        this.typeName = "PRIMITIVE_TYPES";
+      } else {
+        this.typeName = type;
+      }
       this.type = NAME_MAP[type];
     } else if (type instanceof Telegram) {
       this.typeName = "Telegram";
@@ -378,7 +390,7 @@ class array extends Processor {
   realParse() {
     let i = 0;
     const {
-      options: { length }
+      options: { length },
     } = this.item;
     const arrayLength = typeof length === "number" ? length : this.result[length];
     for (i = 0; i < arrayLength; i++) {
@@ -397,6 +409,14 @@ class array extends Processor {
     switch (this.typeName) {
       case "PRIMITIVE_TYPES":
         this.ownItemResult = buffer[`read${this.type}`](offset);
+        break;
+      case "string":
+        const {
+          options: { subOptions },
+        } = this.item;
+        const stringParser = new Telegram().string("tmp", subOptions);
+        const { result: str_result } = stringParser.parse(this.buf, {});
+        this.ownItemResult = str_result.tmp;
         break;
       case "Telegram":
         const { result: new_result } = this.type.parse(this.buf, {});
@@ -425,7 +445,7 @@ class skip extends Processor {
 
   updateStatus() {
     const {
-      options: { length }
+      options: { length },
     } = this.item;
     this.buf.offset += length;
   }
@@ -440,9 +460,11 @@ class string extends Processor {
 
   realParse() {
     const {
-      options: { length, encoding, zeroTerminated, greedy }
+      options: { length, encoding, zeroTerminated, greedy, stripNull },
     } = this.item;
     const { buffer, offset } = this.buf;
+
+    // calc the length of string
     const start = offset;
     if (length && zeroTerminated) {
       let i = start;
@@ -467,8 +489,11 @@ class string extends Processor {
     } else if (greedy) {
       this.stringLength = buffer.length - start;
     }
-    console.log(this.stringLength);
+
     this.ownResult = buffer.toString(encoding, offset, offset + this.stringLength);
+    if (stripNull) {
+      this.ownResult = this.ownResult.replace(/\0/g, "");
+    }
   }
 
   store() {
