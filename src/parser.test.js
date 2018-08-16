@@ -15,7 +15,7 @@ const tcpHeader = new Telegram()
       .bit1("psh")
       .bit1("rst")
       .bit1("syn")
-      .bit1("fin")
+      .bit1("fin"),
   })
   .uint16("windowSize")
   .uint16("checksum")
@@ -37,6 +37,6 @@ test("tcpHeader decompress", () => {
     reserved: 0,
     windowSize: 10707,
     checksum: 65,
-    urgentPointer: 0
+    urgentPointer: 0,
   });
 });
