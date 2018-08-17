@@ -12,7 +12,7 @@ const PRIMITIVE_TYPES = {
   FloatLE: 4,
   FloatBE: 4,
   DoubleLE: 8,
-  DoubleBE: 8
+  DoubleBE: 8,
 };
 
 const SPECIAL_TYPES = {
@@ -20,7 +20,7 @@ const SPECIAL_TYPES = {
   Skip: null,
   Nest: null,
   Bit: null,
-  String: null
+  String: null,
 };
 
 const BIT_RANGE = [...Array(33).keys()].slice(1);
