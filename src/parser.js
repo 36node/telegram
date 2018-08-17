@@ -56,7 +56,7 @@ export default class Telegram {
       throw new Error("Length or greedy must be defined if stripNull is defined.");
     }
 
-    options.encoding = options.encoding || "utf8";
+    options.encoding = options.encoding || "ascii";
 
     return this.setNextParser("string", varName, options);
   }
@@ -68,7 +68,10 @@ export default class Telegram {
     if (!options.type) {
       throw new Error("Type option of array is not defined.");
     }
-    if (typeof options.type === "string" && !has.call(PRIMITIVE_TYPES, NAME_MAP[options.type])) {
+    if (
+      typeof options.type === "string" &&
+      !(has.call(PRIMITIVE_TYPES, NAME_MAP[options.type]) || options.type === "string")
+    ) {
       throw new Error(`Specified primitive type ${options.type} is not supported.`);
     }
 
@@ -123,9 +126,13 @@ export default class Telegram {
     return this;
   }
 
-  decompress(buffer) {
+  decompress(buffer, needLength = false) {
     const input = { buffer, offset: 0, bitOffset: 0 };
-    const { result } = this.parse(input, {});
+    const { buf, result } = this.parse(input, {});
+    if (needLength) {
+      const length = buf.offset;
+      return { result, length };
+    }
     return result;
   }
 
@@ -155,8 +162,8 @@ class Processor {
     this.item = item;
     this.initialize();
     this.realParse();
-    this.formatter();
     this.assert();
+    this.formatter();
     this.store();
     this.updateStatus();
   }
@@ -186,10 +193,11 @@ class Processor {
           isEqual = options.assert.call(this, this.ownResult);
           break;
         case "number":
+        case "string":
           isEqual = this.ownResult === options.assert;
           break;
         default:
-          throw new Error("Assert option supports only numbers and assert functions.");
+          throw new Error("Assert option supports only numbers and string and assert functions.");
       }
       if (!isEqual) {
         throw new Error(`Assert error: ${this.item.varName} is ${this.ownResult}`);
@@ -367,7 +375,11 @@ class array extends Processor {
       options: { type },
     } = this.item;
     if (typeof type === "string") {
-      this.typeName = "PRIMITIVE_TYPES";
+      if (Object.keys(PRIMITIVE_TYPES).includes(NAME_MAP[type])) {
+        this.typeName = "PRIMITIVE_TYPES";
+      } else {
+        this.typeName = type;
+      }
       this.type = NAME_MAP[type];
     } else if (type instanceof Telegram) {
       this.typeName = "Telegram";
@@ -397,6 +409,14 @@ class array extends Processor {
     switch (this.typeName) {
       case "PRIMITIVE_TYPES":
         this.ownItemResult = buffer[`read${this.type}`](offset);
+        break;
+      case "string":
+        const {
+          options: { subOptions },
+        } = this.item;
+        const stringParser = new Telegram().string("tmp", subOptions);
+        const { result: str_result } = stringParser.parse(this.buf, {});
+        this.ownItemResult = str_result.tmp;
         break;
       case "Telegram":
         const { result: new_result } = this.type.parse(this.buf, {});
@@ -431,7 +451,63 @@ class skip extends Processor {
   }
 }
 
+class string extends Processor {
+  constructor(options) {
+    super(options);
+    this.stringLength = null;
+    this.isZeroTerminated = false;
+  }
+
+  realParse() {
+    const {
+      options: { length, encoding, zeroTerminated, greedy, stripNull },
+    } = this.item;
+    const { buffer, offset } = this.buf;
+
+    // calc the length of string
+    const start = offset;
+    if (length && zeroTerminated) {
+      let i = start;
+      for (i; i < start + length; i++) {
+        if (buffer.readUInt8(i) === 0) {
+          break;
+        }
+      }
+      this.stringLength = i - start;
+      this.isZeroTerminated = this.stringLength === length ? false : true;
+    } else if (length) {
+      this.stringLength = length;
+    } else if (zeroTerminated) {
+      let i = start;
+      for (i; i < buffer.length; i++) {
+        if (buffer.readUInt8(i) === 0) {
+          break;
+        }
+      }
+      this.stringLength = i - start;
+      this.isZeroTerminated = i === buffer.length ? false : true;
+    } else if (greedy) {
+      this.stringLength = buffer.length - start;
+    }
+
+    this.ownResult = buffer.toString(encoding, offset, offset + this.stringLength);
+    if (stripNull) {
+      this.ownResult = this.ownResult.replace(/\0/g, "");
+    }
+  }
+
+  store() {
+    const { varName } = this.item;
+    this.result[varName] = this.ownResult;
+  }
+
+  updateStatus() {
+    this.buf.offset += this.isZeroTerminated ? this.stringLength + 1 : this.stringLength;
+  }
+}
+
 typeClasses.nest = nest;
 typeClasses.array = array;
 typeClasses.skip = skip;
 typeClasses.bits = bits;
+typeClasses.string = string;

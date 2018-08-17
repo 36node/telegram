@@ -20,6 +20,7 @@ const SPECIAL_TYPES = {
   Skip: null,
   Nest: null,
   Bit: null,
+  String: null,
 };
 
 const BIT_RANGE = [...Array(33).keys()].slice(1);
