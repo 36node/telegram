@@ -41,8 +41,11 @@ export default class Telegram {
     if (options && options.assert) {
       throw new Error("assert option on skip is not allowed.");
     }
-
-    return this.setNextParser("skip", "", { length });
+    if (options === undefined) {
+      options = {};
+    }
+    options.length = length;
+    return this.setNextParser("skip", "", options);
   }
 
   string(varName, options) {
@@ -87,11 +90,8 @@ export default class Telegram {
     if (!options.type) {
       throw new Error("Type option of nest is not defined.");
     }
-    if (!(options.type instanceof Telegram)) {
-      throw new Error("Type option of nest must be a Parser object.");
-    }
-    if (!(options.type instanceof Telegram) && !varName) {
-      throw new Error("options.type must be a object if variable name is omitted.");
+    if (!(options.type instanceof Telegram) && !(typeof options.type === "function")) {
+      throw new Error("Type option of nest must be a Telegram object.");
     }
 
     return this.setNextParser("nest", varName, options);
@@ -218,6 +218,25 @@ class Processor {
   getResult() {
     return { buf: this.buf, result: this.result };
   }
+
+  calcBitOffset(bitLength) {
+    const { bitOffset } = this.buf;
+    this.buf.bitOffset = (bitOffset + bitLength) % 8;
+    const carry = Math.floor((bitOffset + bitLength) / 8);
+    this.buf.offset += carry;
+  }
+
+  generateLength(option) {
+    let length;
+    if (typeof option === "number") {
+      length = option;
+    } else if (typeof option === "function") {
+      length = option.call(this, this.result);
+    } else if (typeof option === "string") {
+      length = this.result[option];
+    }
+    return length;
+  }
 }
 
 Object.keys(PRIMITIVE_TYPES).forEach(type => {
@@ -232,6 +251,87 @@ Object.keys(PRIMITIVE_TYPES).forEach(type => {
     }
   };
 });
+
+class array extends Processor {
+  constructor(options) {
+    super(options);
+    this.ownItemResult = null;
+    this.type = null;
+    this.typeName = null;
+  }
+
+  initialize() {
+    this.ownResult = [];
+    this.defineType();
+  }
+
+  defineType() {
+    const {
+      options: { type },
+    } = this.item;
+    if (typeof type === "string") {
+      if (Object.keys(PRIMITIVE_TYPES).includes(NAME_MAP[type])) {
+        this.typeName = "PRIMITIVE_TYPES";
+      } else {
+        this.typeName = type;
+      }
+      this.type = NAME_MAP[type];
+    } else if (type instanceof Telegram) {
+      this.typeName = "Telegram";
+      this.type = type;
+    }
+  }
+
+  realParse() {
+    let i = 0;
+    const {
+      options: { length },
+    } = this.item;
+    const arrayLength = this.generateLength(length);
+    for (i = 0; i < arrayLength; i++) {
+      this.parseItem();
+    }
+  }
+
+  parseItem() {
+    this.realParseItem();
+    this.pushItem();
+    this.updateItemStatus();
+  }
+
+  realParseItem() {
+    const { buffer, offset } = this.buf;
+    switch (this.typeName) {
+      case "PRIMITIVE_TYPES":
+        this.ownItemResult = buffer[`read${this.type}`](offset);
+        break;
+      case "string":
+        const {
+          options: { subOptions },
+        } = this.item;
+        const stringParser = new Telegram().string("tmp", subOptions);
+        const { result: str_result } = stringParser.parse(this.buf, {});
+        this.ownItemResult = str_result.tmp;
+        break;
+      case "Telegram":
+        const { result: new_result } = this.type.parse(this.buf, {});
+        this.ownItemResult = new_result;
+        break;
+      default:
+        break;
+    }
+  }
+
+  pushItem() {
+    this.ownResult.push(this.ownItemResult);
+  }
+
+  updateItemStatus() {
+    if (this.typeName === "PRIMITIVE_TYPES") {
+      this.buf.offset += PRIMITIVE_TYPES[this.type];
+    }
+  }
+}
 
 class bits extends Processor {
   constructor(options) {
@@ -326,13 +426,10 @@ class bits extends Processor {
   }
 
   updateStatus() {
-    const { bitOffset } = this.buf;
     const {
       options: { length },
     } = this.bitItem;
-    this.buf.bitOffset = (bitOffset + length) % 8;
-    const carry = Math.floor((bitOffset + length) / 8);
-    this.buf.offset += carry;
+    this.calcBitOffset(length);
   }
 }
 
@@ -344,6 +441,14 @@ class nest extends Processor {
     if (type instanceof Telegram) {
       const { result: new_result } = type.parse(this.buf, {});
       this.ownResult = new_result;
+    } else if (typeof type === "function") {
+      const subParser = type.call(this, this.result);
+      if (subParser instanceof Telegram) {
+        const { result: new_result } = subParser.parse(this.buf, {});
+        this.ownResult = new_result;
+      } else {
+        throw new Error("Type option of nest must be a Telegram object.");
+      }
     }
   }
 
@@ -357,87 +462,6 @@ class nest extends Processor {
   }
 }
 
-class array extends Processor {
-  constructor(options) {
-    super(options);
-    this.ownItemResult = null;
-    this.type = null;
-    this.typeName = null;
-  }
-
-  initialize() {
-    this.ownResult = [];
-    this.defineType();
-  }
-
-  defineType() {
-    const {
-      options: { type },
-    } = this.item;
-    if (typeof type === "string") {
-      if (Object.keys(PRIMITIVE_TYPES).includes(NAME_MAP[type])) {
-        this.typeName = "PRIMITIVE_TYPES";
-      } else {
-        this.typeName = type;
-      }
-      this.type = NAME_MAP[type];
-    } else if (type instanceof Telegram) {
-      this.typeName = "Telegram";
-      this.type = type;
-    }
-  }
-
-  realParse() {
-    let i = 0;
-    const {
-      options: { length },
-    } = this.item;
-    const arrayLength = typeof length === "number" ? length : this.result[length];
-    for (i = 0; i < arrayLength; i++) {
-      this.parseItem();
-    }
-  }
-
-  parseItem() {
-    this.realParseItem();
-    this.pushItem();
-    this.updateItemStatus();
-  }
-
-  realParseItem() {
-    const { buffer, offset } = this.buf;
-    switch (this.typeName) {
-      case "PRIMITIVE_TYPES":
-        this.ownItemResult = buffer[`read${this.type}`](offset);
-        break;
-      case "string":
-        const {
-          options: { subOptions },
-        } = this.item;
-        const stringParser = new Telegram().string("tmp", subOptions);
-        const { result: str_result } = stringParser.parse(this.buf, {});
-        this.ownItemResult = str_result.tmp;
-        break;
-      case "Telegram":
-        const { result: new_result } = this.type.parse(this.buf, {});
-        this.ownItemResult = new_result;
-        break;
-      default:
-        break;
-    }
-  }
-
-  pushItem() {
-    this.ownResult.push(this.ownItemResult);
-  }
-
-  updateItemStatus() {
-    if (this.typeName === "PRIMITIVE_TYPES") {
-      this.buf.offset += PRIMITIVE_TYPES[this.type];
-    }
-  }
-}
-
 class skip extends Processor {
   store() {
     return;
@@ -445,9 +469,14 @@ class skip extends Processor {
 
   updateStatus() {
     const {
-      options: { length },
+      options: { length, type },
     } = this.item;
-    this.buf.offset += length;
+    const skipLength = this.generateLength(length);
+    if (type === "bit") {
+      this.calcBitOffset(skipLength);
+    } else {
+      this.buf.offset += skipLength;
+    }
   }
 }
 
@@ -463,20 +492,20 @@ class string extends Processor {
       options: { length, encoding, zeroTerminated, greedy, stripNull },
     } = this.item;
     const { buffer, offset } = this.buf;
-
     // calc the length of string
     const start = offset;
     if (length && zeroTerminated) {
       let i = start;
-      for (i; i < start + length; i++) {
+      const len = this.generateLength(length);
+      for (i; i < start + len; i++) {
         if (buffer.readUInt8(i) === 0) {
           break;
         }
       }
       this.stringLength = i - start;
-      this.isZeroTerminated = this.stringLength === length ? false : true;
+      this.isZeroTerminated = this.stringLength === len ? false : true;
     } else if (length) {
-      this.stringLength = length;
+      this.stringLength = this.generateLength(length);
     } else if (zeroTerminated) {
       let i = start;
       for (i; i < buffer.length; i++) {
@@ -506,8 +535,8 @@ class string extends Processor {
   }
 }
 
-typeClasses.nest = nest;
 typeClasses.array = array;
-typeClasses.skip = skip;
 typeClasses.bits = bits;
+typeClasses.nest = nest;
+typeClasses.skip = skip;
 typeClasses.string = string;
