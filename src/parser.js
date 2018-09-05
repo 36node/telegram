@@ -285,11 +285,21 @@ class array extends Processor {
   realParse() {
     let i = 0;
     const {
-      options: { length },
+      options: { length, readUntil },
     } = this.item;
-    const arrayLength = this.generateLength(length);
-    for (i = 0; i < arrayLength; i++) {
-      this.parseItem();
+    if (length) {
+      const arrayLength = this.generateLength(length);
+      for (i = 0; i < arrayLength; i++) {
+        this.parseItem();
+      }
+    } else if (readUntil === "eof") {
+      while (this.buf.offset < this.buf.buffer.length) {
+        this.parseItem();
+      }
+    } else if (typeof readUntil === "number") {
+      while (this.buf.offset < this.buf.buffer.length - readUntil) {
+        this.parseItem();
+      }
     }
   }
 
@@ -309,6 +319,9 @@ class array extends Processor {
         const {
           options: { subOptions },
         } = this.item;
+        if (subOptions.hasOwnProperty("length")) {
+          subOptions.length = this.generateLength(subOptions.length);
+        }
         const stringParser = new Telegram().string("tmp", subOptions);
         const { result: str_result } = stringParser.parse(this.buf, {});
         this.ownItemResult = str_result.tmp;
