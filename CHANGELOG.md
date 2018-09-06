@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.0"></a>
+# [0.3.0](https://github.com/36node/telegram/compare/v0.2.0...v0.3.0) (2018-09-06)
+
+
+### Features
+
+* array add readUntil ([e2f9428](https://github.com/36node/telegram/commit/e2f9428))
+
+
+
 <a name="0.2.0"></a>
 # [0.2.0](https://github.com/36node/telegram/compare/v0.1.0...v0.2.0) (2018-09-04)
 
