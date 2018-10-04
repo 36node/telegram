@@ -49,18 +49,16 @@
   "devDependencies": {
     "@36node/babel": "*",
     "@36node/eslint-config": "*",
-    "@36node/sketch-cli": "0.4.0",
-    "@commitlint/cli": "6.1.0",
-    "@commitlint/config-conventional": "6.1.0",
-    "husky": "1.0.0-rc.13",
-    "jest": "23.4.2",
-    "lint-staged": "7.2.0",
-    "nodemon": "1.18.3",
-    "prettier": "1.13.7",
-    "standard-version": "4.4.0"
+    "@36node/sketch-cli": "^0.4.0",
+    "@commitlint/cli": "^6.1.0",
+    "@commitlint/config-conventional": "^6.1.0",
+    "husky": "^1.0.0-rc.13",
+    "jest": "^23.4.2",
+    "lint-staged": "^7.2.0",
+    "nodemon": "^1.18.3",
+    "prettier": "^1.13.7",
+    "standard-version": "^4.4.0"
   },
   "dependencies": {
-    "commander": "2.16.0",
-    "fs": "0.0.1-security"
   }
 }
