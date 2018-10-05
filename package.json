@@ -1,6 +1,6 @@
 {
   "name": "@36node/telegram",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A module for parsing binary in buffer.",
   "repository": {
     "url": "36node/telegram",
@@ -59,6 +59,5 @@
     "prettier": "^1.13.7",
     "standard-version": "^4.4.0"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }
