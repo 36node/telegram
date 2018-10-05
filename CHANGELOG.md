@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.4"></a>
+## [0.3.4](https://github.com/36node/telegram/compare/v0.3.3...v0.3.4) (2018-10-05)
+
+
+### Bug Fixes
+
+* es7 translate error with ...keys() ([3b19f1d](https://github.com/36node/telegram/commit/3b19f1d))
+
+
+
 <a name="0.3.3"></a>
 ## [0.3.3](https://github.com/36node/telegram/compare/v0.3.2...v0.3.3) (2018-10-05)
 
