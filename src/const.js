@@ -23,7 +23,7 @@ const SPECIAL_TYPES = {
   String: null,
 };
 
-const BIT_RANGE = [...Array(33).keys()].slice(1);
+const BIT_RANGE = Array.from(new Array(32), (val, index) => index + 1);
 
 let NAME_MAP = {};
 Object.keys({ ...PRIMITIVE_TYPES, ...SPECIAL_TYPES }).forEach(type => {
