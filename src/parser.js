@@ -139,7 +139,12 @@ export default class Telegram {
   parse(buf, result) {
     for (const item of this.chain) {
       const typeProcessor = new typeClasses[item.type]({ endian: this.endian });
-      typeProcessor.parse(buf, result, item);
+      try {
+        typeProcessor.parse(buf, result, item);
+      } catch (err) {
+        result.error = err;
+        break;
+      }
     }
     return { buf, result };
   }
