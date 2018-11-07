@@ -127,8 +127,15 @@ export default class Telegram {
   }
 
   decompress(buffer, needLength = false) {
-    const input = { buffer, offset: 0, bitOffset: 0 };
-    const { buf, result } = this.parse(input, {});
+    const buf = { buffer, offset: 0, bitOffset: 0 };
+    const result = {};
+
+    try {
+      this.parse(buf, result);
+    } catch (err) {
+      result.err = err;
+    }
+
     if (needLength) {
       const length = buf.offset;
       return { result, length };
@@ -139,12 +146,7 @@ export default class Telegram {
   parse(buf, result) {
     for (const item of this.chain) {
       const typeProcessor = new typeClasses[item.type]({ endian: this.endian });
-      try {
-        typeProcessor.parse(buf, result, item);
-      } catch (err) {
-        result.error = err;
-        break;
-      }
+      typeProcessor.parse(buf, result, item);
     }
     return { buf, result };
   }

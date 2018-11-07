@@ -15,11 +15,10 @@
     "dist"
   ],
   "main": "dist/index.js",
-  "umd:main": "dist/index.umd.js",
   "module": "dist/index.mjs",
   "scripts": {
     "start": "nodemon examples/ip.js --watch src --watch examples --exec 'babel-node'",
-    "build": "sketch build",
+    "build": "microbundle build --format cjs,es src/index.js",
     "format": "prettier --trailing-comma es5 --write",
     "lint": "eslint src",
     "release": "standard-version && git push --follow-tags origin master",
@@ -49,12 +48,12 @@
   "devDependencies": {
     "@36node/babel": "*",
     "@36node/eslint-config": "*",
-    "@36node/sketch-cli": "^0.4.0",
     "@commitlint/cli": "^6.1.0",
     "@commitlint/config-conventional": "^6.1.0",
     "husky": "^1.0.0-rc.13",
     "jest": "^23.4.2",
     "lint-staged": "^7.2.0",
+    "microbundle": "^0.7.0",
     "nodemon": "^1.18.3",
     "prettier": "^1.13.7",
     "standard-version": "^4.4.0"
