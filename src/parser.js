@@ -133,7 +133,7 @@ export default class Telegram {
     try {
       this.parse(buf, result);
     } catch (err) {
-      result.err = err;
+      result.err = err.message;
     }
 
     if (needLength) {
