@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.8"></a>
+## [0.3.8](https://github.com/36node/telegram/compare/v0.3.7...v0.3.8) (2018-11-10)
+
+
+### Bug Fixes
+
+* store before parse throw error ([70b4640](https://github.com/36node/telegram/commit/70b4640))
+
+
+
 <a name="0.3.7"></a>
 ## [0.3.7](https://github.com/36node/telegram/compare/v0.3.6...v0.3.7) (2018-11-08)
 
