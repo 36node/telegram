@@ -167,7 +167,9 @@ class Processor {
     this.buf = buf;
     this.result = result;
     this.item = item;
+
     this.initialize();
+    this.store();
     this.realParse();
     this.assert();
     this.formatter();
@@ -454,22 +456,23 @@ class bits extends Processor {
 }
 
 class nest extends Processor {
+  ownResult = {};
+
   realParse() {
-    const {
+    let {
       options: { type },
     } = this.item;
-    if (type instanceof Telegram) {
-      const { result: new_result } = type.parse(this.buf, {});
-      this.ownResult = new_result;
-    } else if (typeof type === "function") {
-      const subParser = type.call(this, this.result);
-      if (subParser instanceof Telegram) {
-        const { result: new_result } = subParser.parse(this.buf, {});
-        this.ownResult = new_result;
-      } else {
-        throw new Error("Type option of nest must be a Telegram object.");
-      }
+
+    // 支持函数
+    if (typeof type === "function") {
+      type = type.call(this, this.result);
     }
+
+    if (!type instanceof Telegram) {
+      throw new Error("Type option of nest must be a Telegram object.");
+    }
+
+    type.parse(this.buf, this.ownResult);
   }
 
   store() {
