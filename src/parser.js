@@ -456,7 +456,10 @@ class bits extends Processor {
 }
 
 class nest extends Processor {
-  ownResult = {};
+  constructor(opts) {
+    super(opts);
+    this.ownResult = {};
+  }
 
   realParse() {
     let {
