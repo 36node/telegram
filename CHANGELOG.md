@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.9"></a>
+## [0.3.9](https://github.com/36node/telegram/compare/v0.3.8...v0.3.9) (2018-11-10)
+
+
+
 <a name="0.3.8"></a>
 ## [0.3.8](https://github.com/36node/telegram/compare/v0.3.7...v0.3.8) (2018-11-10)
 
