@@ -48,8 +48,8 @@
   "devDependencies": {
     "@36node/babel": "*",
     "@36node/eslint-config": "*",
-    "@commitlint/cli": "^6.1.0",
-    "@commitlint/config-conventional": "^6.1.0",
+    "@commitlint/cli": "^8.0.0",
+    "@commitlint/config-conventional": "^8.0.0",
     "husky": "^1.0.0-rc.13",
     "jest": "^23.4.2",
     "lint-staged": "^7.2.0",
