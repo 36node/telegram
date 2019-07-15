@@ -50,13 +50,13 @@
     "@36node/eslint-config": "*",
     "@commitlint/cli": "^8.0.0",
     "@commitlint/config-conventional": "^8.0.0",
-    "husky": "^1.0.0-rc.13",
-    "jest": "^23.4.2",
-    "lint-staged": "^7.2.0",
-    "microbundle": "^0.7.0",
-    "nodemon": "^1.18.3",
-    "prettier": "^1.13.7",
-    "standard-version": "^4.4.0"
+    "husky": "^1.3.1",
+    "jest": "24.7.1",
+    "lint-staged": "^8.1.5",
+    "microbundle": "^0.11.0",
+    "nodemon": "^1.19.1",
+    "prettier": "1.17.1",
+    "standard-version": "^6.0.1"
   },
   "dependencies": {}
 }
