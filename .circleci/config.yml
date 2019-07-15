@@ -60,7 +60,7 @@ jobs:
     steps:
       - add_ssh_keys:
           fingerprints:
-            - "b1:ae:28:64:a6:7f:88:27:a9:6c:12:a7:85:d9:4e:03"
+            - "ce:03:be:f3:60:46:f5:66:ad:db:35:bd:94:59:f4:dd"
       - checkout
       - restore_cache:
           key: dependency-cache-{{ checksum "yarn.lock" }}
