@@ -1,6 +1,18 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.3.10](https://github.com/36node/telegram/compare/v0.3.9...v0.3.10) (2019-07-16)
+
+
+### Bug Fixes
+
+* upgrade commitlint ([dd006e8](https://github.com/36node/telegram/commit/dd006e8))
+* upgrade yarn lock ([1b59867](https://github.com/36node/telegram/commit/1b59867))
+* use tpl-module template ([24a5385](https://github.com/36node/telegram/commit/24a5385))
+* yarn upgrade ([5bcce41](https://github.com/36node/telegram/commit/5bcce41))
+
+
 
 <a name="0.3.9"></a>
 ## [0.3.9](https://github.com/36node/telegram/compare/v0.3.8...v0.3.9) (2018-11-10)
