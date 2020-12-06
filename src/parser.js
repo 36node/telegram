@@ -470,10 +470,6 @@ class array extends Processor {
 }
 
 class arrayCompresser extends Compresser {
-  constructor(opts) {
-    super(opts);
-  }
-
   initialize() {
     super.initialize();
 
@@ -546,7 +542,7 @@ class arrayCompresser extends Compresser {
     const resultBuffer = Buffer.alloc(resultBufferLength);
     let offset = 0;
 
-    this.resultBuffers.map((buf, index) => {
+    this.resultBuffers.forEach((buf, index) => {
       const bits = readBufferBits(buf, 0, this.resultBitLengths[index]);
       writeBufferBits(resultBuffer, bits, offset);
       offset += this.resultBitLengths[index];
@@ -657,10 +653,6 @@ class bits extends Processor {
 }
 
 class bitsCompresser extends Compresser {
-  constructor(options) {
-    super(options);
-  }
-
   initialize() {
     const { bitChain = [] } = this.item;
     this.bitChain = bitChain;
@@ -746,10 +738,6 @@ class nest extends Processor {
 }
 
 class nestCompresser extends Compresser {
-  constructor(opts) {
-    super(opts);
-  }
-
   initialize() {
     super.initialize();
     if (!this.type) {
