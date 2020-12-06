@@ -156,11 +156,12 @@ export default class Telegram {
 
   initializeCompresser(obj) {
     // 初始化 compresser
+
+    // console.log(this.chain, obj);
+
     this.compressers = this.chain.map(
       item => new compresserClasses[item.type]({ endian: this.endian, item, obj })
     );
-
-    this.compressers.forEach(compress => compress.initialize());
 
     this.compressBitsLength = this.compressers.reduce((acc, cur) => {
       return acc + cur.getBitsLength();
@@ -303,6 +304,7 @@ class Compresser {
     this.endian = endian;
     this.item = item;
     this.obj = obj;
+    this.initialize();
   }
 
   generateLength(option) {
@@ -317,12 +319,16 @@ class Compresser {
     return length;
   }
 
-  initialize() {}
+  initialize() {
+    const { varName, options = {} } = this.item;
 
-  // 抽取待压缩的值
-  extraValue() {
-    const { varName } = this.item;
-    return this.obj[varName];
+    const { encoder } = options;
+
+    if (encoder && typeof encoder === "function") {
+      this.value = encoder(this.obj[varName]);
+    } else {
+      this.value = this.obj[varName];
+    }
   }
 
   /**
@@ -330,8 +336,7 @@ class Compresser {
    * @param {*} obj 压缩的对象
    */
   compress() {
-    const value = this.extraValue();
-    return this.realCompress(value);
+    return this.realCompress();
   }
 
   // 获取当前数据需要的位数
@@ -358,9 +363,9 @@ Object.keys(PRIMITIVE_TYPES).forEach(type => {
 
   // initial compresser
   compresserClasses[`${type.toLowerCase()}`] = class extends Compresser {
-    realCompress(value) {
+    realCompress() {
       const ret = Buffer.alloc(PRIMITIVE_TYPES[type]);
-      ret[`write${type}`](value);
+      ret[`write${type}`](this.value);
       return ret;
     }
 
@@ -461,6 +466,93 @@ class array extends Processor {
     if (this.typeName === "PRIMITIVE_TYPES") {
       this.buf.offset += PRIMITIVE_TYPES[this.type];
     }
+  }
+}
+
+class arrayCompresser extends Compresser {
+  constructor(opts) {
+    super(opts);
+  }
+
+  initialize() {
+    super.initialize();
+
+    if (!Array.isArray(this.value)) {
+      throw new TypeError(this.item.varName + " value should be value");
+    }
+
+    const {
+      options: { length, type, subOptions },
+    } = this.item;
+
+    let arrayLength;
+    const valueLength = this.value.length;
+
+    if (length) {
+      arrayLength = this.generateLength(length);
+      if (valueLength !== arrayLength) {
+        throw new RangeError(this.item.varName + " value length not equal length option");
+      }
+    } else {
+      // 如果配置中没有 length 则value中的所有数据被写入
+      arrayLength = valueLength;
+    }
+    this.resultBitLengths = [];
+
+    // 压缩数据
+    if (typeof type === "string") {
+      if (!Object.keys(NAME_MAP).includes(type)) {
+        throw new TypeError(
+          this.item.varName + " type shoule be one of " + Object.keys(NAME_MAP).join(",")
+        );
+      }
+      this.resultBuffers = this.value.map(val => {
+        const compresser = new compresserClasses[type]({
+          endian: this.endian,
+          item: {
+            varName: "tmp",
+            options: subOptions,
+            type,
+          },
+          obj: { tmp: val },
+        });
+
+        this.resultBitLengths.push(compresser.getBitsLength());
+        return compresser.compress({ tmp: val });
+      });
+      this.type = NAME_MAP[type];
+    } else if (type instanceof Telegram) {
+      this.type = type;
+
+      this.resultBuffers = this.value.map(val => {
+        const buf = type.compress(val);
+        this.resultBitLengths.push(type.compressBitsLength);
+        return buf;
+      });
+    }
+  }
+
+  getBitsLength() {
+    return this.resultBitLengths.reduce((len, cur) => {
+      return len + cur;
+    }, 0);
+  }
+
+  realCompress() {
+    // 结果buffer的长度
+    const resultBufferLength = Math.ceil(this.getBitsLength() / 8);
+
+    // 申请结果buffer的空间
+    const resultBuffer = Buffer.alloc(resultBufferLength);
+    let offset = 0;
+
+    this.resultBuffers.map((buf, index) => {
+      const bits = readBufferBits(buf, 0, this.resultBitLengths[index]);
+      writeBufferBits(resultBuffer, bits, offset);
+      offset += this.resultBitLengths[index];
+    });
+
+    return resultBuffer;
   }
 }
 
@@ -567,12 +659,13 @@ class bits extends Processor {
 class bitsCompresser extends Compresser {
   constructor(options) {
     super(options);
-    const { bitChain = [] } = this.item;
-    this.bitChain = bitChain;
   }
 
-  extraValue() {
-    return this.bitChain.reduce((acc, cur) => {
+  initialize() {
+    const { bitChain = [] } = this.item;
+    this.bitChain = bitChain;
+
+    this.value = this.bitChain.reduce((acc, cur) => {
       const { varName } = cur;
       acc[varName] = this.obj[varName];
       return acc;
@@ -583,7 +676,7 @@ class bitsCompresser extends Compresser {
    * 压缩
    * @param {object} value
    */
-  realCompress(value) {
+  realCompress() {
     const bitsLength = this.getBitsLength();
     const byteLength = Math.ceil(bitsLength / 8);
     const retBuf = Buffer.alloc(byteLength);
@@ -595,7 +688,7 @@ class bitsCompresser extends Compresser {
         varName,
       } = bitItem;
 
-      const val = value[varName];
+      const val = this.value[varName];
 
       const valBits = readUIntBits(val, length);
 
@@ -655,25 +748,30 @@ class nest extends Processor {
 class nestCompresser extends Compresser {
   constructor(opts) {
     super(opts);
-    this.initializeType();
   }
 
-  initializeType() {
+  initialize() {
+    super.initialize();
     if (!this.type) {
       let {
         options: { type },
+        varName,
       } = this.item;
 
       // 支持函数
       if (typeof type === "function") {
-        type = type.call(this, this.result);
+        type = type.call(this, this.obj);
       }
 
       if (!type instanceof Telegram) {
         throw new Error("Type option of nest must be a Telegram object.");
       }
 
-      type.initializeCompresser(this.obj);
+      if (varName) {
+        type.initializeCompresser(this.value);
+      } else {
+        type.initializeCompresser(this.obj);
+      }
       this.type = type;
     }
   }
@@ -682,8 +780,14 @@ class nestCompresser extends Compresser {
     return this.type.compressBitsLength;
   }
 
-  realCompress(value) {
-    return this.type.compress(value);
+  realCompress() {
+    const { varName } = this.item;
+
+    if (varName) {
+      return this.type.compress(this.value);
+    } else {
+      return this.type.compress(this.obj);
+    }
   }
 }
 
@@ -706,10 +810,6 @@ class skip extends Processor {
 }
 
 class skipCompresser extends Compresser {
-  extraValue() {
-    return null;
-  }
-
   getBitsLength() {
     const {
       options: { length, type },
@@ -790,6 +890,7 @@ class string extends Processor {
 
 class stringCompresser extends Compresser {
   initialize() {
+    super.initialize();
     const {
       options: { length, zeroTerminated },
     } = this.item;
@@ -797,7 +898,7 @@ class stringCompresser extends Compresser {
     /**
      * @type {string}
      */
-    const value = this.extraValue();
+    const value = this.value;
 
     if (!zeroTerminated && !length && length < 0) {
       throw new RangeError("length should exist and greater than 0");
@@ -870,6 +971,7 @@ parserClasses.nest = nest;
 parserClasses.skip = skip;
 parserClasses.string = string;
 
+compresserClasses.array = arrayCompresser;
 compresserClasses.bits = bitsCompresser;
 compresserClasses.nest = nestCompresser;
 compresserClasses.skip = skipCompresser;

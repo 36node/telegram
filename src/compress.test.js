@@ -139,6 +139,8 @@ test("should compress bits with nest big endian", () => {
     urgentPointer: 0,
   };
 
+  // console.log(JSON.stringify(tcpHeader.chain, null, 2));
+
   const compressed = tcpHeader.compress(obj);
   const decompressed = tcpHeader.decompress(compressed);
 
@@ -290,6 +292,137 @@ test("should compress test2.bmp", () => {
   const decompressed = bmpFile.decompress(compressed);
 
   // 解压结果相同
+  expect(decompressed).toEqual(obj);
+
+  // 比较压缩后的bufer和文件中的buffer是否一致
+  expect(data.slice(0, compressed.length).equals(compressed));
+});
+
+// 测试内置类型数组压缩 固定长度
+test("should compress PRIMITIVE_TYPES array with length option", () => {
+  const telegram = new Telegram().array("vals", {
+    type: "uint8",
+    length: 5,
+  });
+
+  const obj = { vals: [1, 2, 3, 4, 5] };
+
+  const compressed = telegram.compress(obj);
+  const decompressed = telegram.decompress(compressed);
+
+  expect(decompressed).toEqual(obj);
+});
+
+// 测试内置类型数组压缩，不固定长度 readUnitl eof
+test("should compress PRIMITIVE_TYPES array with dynamic length readUnitl eof", () => {
+  const telegram = new Telegram().array("vals", {
+    type: "uint8",
+    readUntil: "eof",
+  });
+
+  const obj = { vals: [1, 2, 3, 4, 5] };
+  const compressed = telegram.compress(obj);
+  const decompressed = telegram.decompress(compressed);
+  expect(decompressed).toEqual(obj);
+});
+
+// 测试内置类型数组压缩，不固定长度 readUnitl number
+test("should compress PRIMITIVE_TYPES array with dynamic length readUnitl number", () => {
+  const telegram = new Telegram()
+    .endianess("big")
+    .array("vals", {
+      type: "uint8",
+      readUntil: 1,
+    })
+    .uint8("end");
+
+  const obj = { vals: [1, 2, 3, 4, 5], end: 6 };
+  const compressed = telegram.compress(obj);
+  const decompressed = telegram.decompress(compressed);
+  expect(decompressed).toEqual(obj);
+});
+
+// 测试字符串类型数组压缩，固定长度
+test("should compress string array with fix length", () => {
+  const telegram = new Telegram().array("strs", {
+    type: "string",
+    length: 5,
+    subOptions: {
+      length: 3, // 字符串的长度为3
+    },
+  });
+
+  const obj = { strs: ["cat", "dog", "mem", "nik", "fuc"] };
+  const compressed = telegram.compress(obj);
+  const decompressed = telegram.decompress(compressed);
+  expect(decompressed).toEqual(obj);
+});
+
+// 测试字符串类型数组压缩，不固定长度
+test("should compress string array with dynamic length", () => {
+  const telegram = new Telegram().array("strs", {
+    type: "string",
+    readUntil: "eof",
+    subOptions: {
+      zeroTerminated: true,
+    },
+  });
+
+  const obj = { strs: ["cat", "test", "haha"] };
+
+  const compressed = telegram.compress(obj);
+  const decompressed = telegram.decompress(compressed);
+  expect(decompressed).toEqual(obj);
+});
+
+// 一个复杂的例子，压缩 tar 文件
+test("should compress tar file", () => {
+  const oct2int = s => parseInt(s, 8);
+  const int2oct = v => v.toString(8);
+
+  const tarHeader = new Telegram()
+    .string("name", { length: 100, stripNull: true })
+    .string("mode", { length: 8, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("uid", { length: 8, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("gid", { length: 8, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("size", { length: 12, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("mtime", { length: 12, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("chksum", { length: 8, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("typeflag", { length: 1, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("linkname", { length: 100, stripNull: true })
+    .string("magic", { length: 6, stripNull: true })
+    .string("version", { length: 2, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("uname", { length: 32, stripNull: true })
+    .string("gname", { length: 32, stripNull: true })
+    .string("devmajor", { length: 8, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("devminor", { length: 8, stripNull: true, formatter: oct2int, encoder: int2oct })
+    .string("prefix", { length: 155, stripNull: true })
+    .skip(12);
+
+  const tarItem = new Telegram()
+    .nest({
+      type: tarHeader,
+    })
+    .skip(function(json) {
+      return Math.ceil(json.size / 512) * 512;
+    });
+
+  const tarArchive = new Telegram().array("files", {
+    length: 8,
+    type: tarItem,
+  });
+
+  // 读取文件
+  const data = fs.readFileSync("examples/test.tar");
+
+  // 先解压
+  const obj = tarArchive.decompress(data);
+
+  // 再压缩
+  const compressed = tarArchive.compress(obj);
+
+  // 测试再次解压后的数据是否正确
+  const decompressed = tarArchive.decompress(compressed);
   expect(decompressed).toEqual(obj);
 
   // 比较压缩后的bufer和文件中的buffer是否一致
