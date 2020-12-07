@@ -100,7 +100,42 @@ test("should compress bits big endian ", () => {
   expect(decompressed).toEqual(obj);
 });
 
-// 测试包含 nest 配置
+// 测试bit类型-big little endian
+test("should compress bits little endian ", () => {
+  /**
+   * @type {Telegram}
+   */
+  const tcpHeader = new Telegram()
+    .endianess("little")
+    .uint16("srcPort")
+    .uint16("dstPort")
+    .uint32("seq")
+    .uint32("ack")
+    .bit4("dataOffset") // 连续bit必须保证位数和为8的整数倍
+    .bit12("reserved")
+    .uint16("windowSize")
+    .uint16("checksum")
+    .uint16("urgentPointer");
+
+  const obj = {
+    srcPort: 59554,
+    dstPort: 993,
+    seq: 148994017,
+    ack: 1025537387,
+    dataOffset: 8,
+    reserved: 121,
+    windowSize: 10707,
+    checksum: 65,
+    urgentPointer: 0,
+  };
+
+  const compressed = tcpHeader.compress(obj);
+  const decompressed = tcpHeader.decompress(compressed);
+
+  expect(decompressed).toEqual(obj);
+});
+
+// 测试包含 nest 配置 big endian
 test("should compress bits with nest big endian", () => {
   /**
    * @type {Telegram}
@@ -140,6 +175,51 @@ test("should compress bits with nest big endian", () => {
   };
 
   // console.log(JSON.stringify(tcpHeader.chain, null, 2));
+
+  const compressed = tcpHeader.compress(obj);
+  const decompressed = tcpHeader.decompress(compressed);
+
+  expect(decompressed).toEqual(obj);
+});
+
+// 测试包含 nest 配置 little endian
+test("should compress bits with nest little endian", () => {
+  /**
+   * @type {Telegram}
+   */
+  const tcpHeader = new Telegram()
+    .endianess("little")
+    .uint16("srcPort")
+    .uint16("dstPort")
+    .uint32("seq")
+    .uint32("ack")
+    .bit4("dataOffset")
+    .bit6("reserved")
+    .nest("flags", {
+      type: new Telegram()
+        .bit1("urg")
+        .bit1("ack")
+        .bit1("psh")
+        .bit1("rst")
+        .bit1("syn")
+        .bit1("fin"),
+    })
+    .uint16("windowSize")
+    .uint16("checksum")
+    .uint16("urgentPointer");
+
+  const obj = {
+    srcPort: 59554,
+    dstPort: 993,
+    seq: 148994017,
+    ack: 1025537387,
+    dataOffset: 8,
+    reserved: 63,
+    flags: { urg: 0, ack: 1, psh: 1, rst: 0, syn: 0, fin: 0 },
+    windowSize: 10707,
+    checksum: 65,
+    urgentPointer: 0,
+  };
 
   const compressed = tcpHeader.compress(obj);
   const decompressed = tcpHeader.decompress(compressed);

@@ -118,10 +118,22 @@ export function writeBufferBits(buffer, bits, offset) {
 }
 
 /**
+ * swap buffer endian starting at offset
  *
- * @param {Buffer} buffer
- * @param {number} value
+ * @example
+ * swapBuffer([0x1, 0x2, 0x3, 0x4], 1, 2)  => [0x1, 0x3, 0x2, 0x4]
+ *
+ * @param {Buffer} buffer the buffer to swap
+ * @param {number} offset the byte to start
+ * @param {number} length how many bytes to swap
  */
-export function writeBufferUInt(buffer, value) {
-  buffer.writeBigInt64BE(value);
+export function swapBuffer(buffer, offset, length) {
+  for (let i = 0; i < Math.floor(length / 2); i++) {
+    const left = i + offset;
+    const right = offset + length - 1 - i;
+
+    const tmp = buffer[left];
+    buffer[left] = buffer[right];
+    buffer[right] = tmp;
+  }
 }

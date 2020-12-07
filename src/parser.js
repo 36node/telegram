@@ -1,5 +1,5 @@
 import { PRIMITIVE_TYPES, BIT_RANGE, NAME_MAP } from "./const";
-import { readBufferBits, readUIntBits, writeBufferBits } from "./lib";
+import { readBufferBits, readUIntBits, swapBuffer, writeBufferBits } from "./lib";
 
 const has = Object.prototype.hasOwnProperty;
 
@@ -157,8 +157,6 @@ export default class Telegram {
   initializeCompresser(obj) {
     // 初始化 compresser
 
-    // console.log(this.chain, obj);
-
     this.compressers = this.chain.map(
       item => new compresserClasses[item.type]({ endian: this.endian, item, obj })
     );
@@ -181,14 +179,33 @@ export default class Telegram {
     const resultBuffer = Buffer.alloc(resultBufferLength);
 
     // 结果写入buffer
+
+    // 记录需要swap的部分
+    const swapPart = [];
+
     let offset = 0;
     compressers.forEach(compresser => {
       const ret = compresser.compress(obj);
       const resultBits = readBufferBits(ret, 0, compresser.getBitsLength());
 
+      const bitsLength = compresser.getBitsLength();
+
+      if (compresser.item.type === "bits") {
+        swapPart.push({
+          offset: Math.floor(offset / 8),
+          length: Math.ceil(bitsLength / 8),
+        });
+      }
+
       writeBufferBits(resultBuffer, resultBits, offset);
-      offset += compresser.getBitsLength();
+      offset += bitsLength;
     });
+
+    if (swapPart.length > 0 && this.endian === "le") {
+      for (let swap of swapPart) {
+        swapBuffer(resultBuffer, swap.offset, swap.length);
+      }
+    }
 
     return resultBuffer;
   }
