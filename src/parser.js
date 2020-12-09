@@ -382,6 +382,7 @@ Object.keys(PRIMITIVE_TYPES).forEach(type => {
   compresserClasses[`${type.toLowerCase()}`] = class extends Compresser {
     realCompress() {
       const ret = Buffer.alloc(PRIMITIVE_TYPES[type]);
+
       ret[`write${type}`](this.value);
       return ret;
     }
@@ -502,7 +503,7 @@ class arrayCompresser extends Compresser {
     const valueLength = this.value.length;
 
     if (length) {
-      arrayLength = this.generateLength(length);
+      arrayLength = this.generateLength(length) || 0;
       if (valueLength !== arrayLength) {
         throw new RangeError(this.item.varName + " value length not equal length option");
       }
@@ -527,7 +528,7 @@ class arrayCompresser extends Compresser {
             options: subOptions,
             type,
           },
-          obj: { tmp: val },
+          obj: { tmp: val, ...this.obj },
         });
 
         this.resultBitLengths.push(compresser.getBitsLength());
@@ -675,8 +676,15 @@ class bitsCompresser extends Compresser {
     this.bitChain = bitChain;
 
     this.value = this.bitChain.reduce((acc, cur) => {
-      const { varName } = cur;
-      acc[varName] = this.obj[varName];
+      const { varName, options = {} } = cur;
+      const { encoder } = options;
+
+      if (encoder && typeof encoder === "function") {
+        acc[varName] = encoder(this.obj[varName]);
+      } else {
+        acc[varName] = this.obj[varName];
+      }
+
       return acc;
     }, {});
   }
@@ -811,6 +819,11 @@ class skip extends Processor {
     } else {
       this.buf.offset += skipLength;
     }
+
+    // TODO: 加上越界判断后，32960 中测试用例好多都通不过了，后面统一建issue处理
+    // if (this.buf.offset >= this.buf.buffer.length) {
+    //   throw new Error("skip is out of bounds");
+    // }
   }
 }
 
@@ -830,10 +843,14 @@ class skipCompresser extends Compresser {
   }
 
   realCompress() {
+    const {
+      options: { fill = 0 },
+    } = this.item;
+
     const bitsLength = this.getBitsLength();
     const byteLength = Math.ceil(bitsLength / 8);
     const retBuf = Buffer.alloc(byteLength);
-    retBuf.fill(0);
+    retBuf.fill(fill);
     return retBuf;
   }
 }

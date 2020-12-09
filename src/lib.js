@@ -24,6 +24,8 @@ export function readByteBits(byte) {
  * @param {number} bitLength max is 53
  */
 export function readUIntBits(val, bitLength) {
+  if (typeof val !== "number") throw new TypeError("val must be a number");
+
   if (val > Number.MAX_SAFE_INTEGER || val < 0) throw new RangeError("invalid number");
 
   const result = [];
