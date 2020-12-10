@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [0.4.0](https://github.com/36node/telegram/compare/v0.3.15...v0.4.0) (2020-12-10)
+
+
+### Features
+
+* add byte decompress mode ([#17](https://github.com/36node/telegram/issues/17)) ([82b1b05](https://github.com/36node/telegram/commit/82b1b05))
+
+
+
 ### [0.3.15](https://github.com/36node/telegram/compare/v0.3.14...v0.3.15) (2020-12-09)
 
 
