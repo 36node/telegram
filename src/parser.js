@@ -307,9 +307,19 @@ class Processor {
     if (typeof option === "number") {
       length = option;
     } else if (typeof option === "function") {
-      length = option.call(this, this.result);
-    } else if (typeof option === "string") {
+      const result = Object.assign({}, this.result);
+
       if (this.needStart) {
+        for (let i in result) {
+          if (result[i].value) {
+            result[i] = result[i].value;
+          }
+        }
+      }
+
+      length = option.call(this, result);
+    } else if (typeof option === "string") {
+      if (this.needStart && this.result[option].value) {
         length = this.result[option].value;
       } else {
         length = this.result[option];
