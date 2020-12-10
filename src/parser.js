@@ -137,12 +137,12 @@ export default class Telegram {
     return this;
   }
 
-  decompress(buffer, needLength = false) {
-    const buf = { buffer, offset: 0, bitOffset: 0 };
+  decompress(buffer, needLength = false, needStart = false) {
+    const buf = { buffer, offset: 0, bitOffset: 0, premitiveLength: 0 };
     const result = {};
 
     try {
-      this.parse(buf, result);
+      this.parse(buf, result, needStart);
     } catch (err) {
       result.err = err.message;
     }
@@ -210,10 +210,10 @@ export default class Telegram {
     return resultBuffer;
   }
 
-  parse(buf, result) {
+  parse(buf, result, needStart) {
     for (const item of this.chain) {
       const typeProcessor = new parserClasses[item.type]({ endian: this.endian });
-      typeProcessor.parse(buf, result, item);
+      typeProcessor.parse(buf, result, item, needStart);
     }
     return { buf, result };
   }
@@ -226,12 +226,14 @@ class Processor {
     this.result = null;
     this.ownResult = null;
     this.item = null;
+    this.needStart = false;
   }
 
-  parse(buf, result, item) {
+  parse(buf, result, item, needStart) {
     this.buf = buf;
     this.result = result;
     this.item = item;
+    this.needStart = needStart;
 
     this.initialize();
     this.store();
@@ -307,7 +309,11 @@ class Processor {
     } else if (typeof option === "function") {
       length = option.call(this, this.result);
     } else if (typeof option === "string") {
-      length = this.result[option];
+      if (this.needStart) {
+        length = this.result[option].value;
+      } else {
+        length = this.result[option];
+      }
     }
     return length;
   }
@@ -368,9 +374,26 @@ class Compresser {
 
 Object.keys(PRIMITIVE_TYPES).forEach(type => {
   parserClasses[`${type.toLowerCase()}`] = class extends Processor {
+    initialize() {
+      this.buf.premitiveLength = PRIMITIVE_TYPES[type];
+    }
+
     realParse() {
       const { buffer, offset } = this.buf;
       this.ownResult = buffer[`read${type}`](offset);
+    }
+
+    store() {
+      const { varName } = this.item;
+      if (this.needStart) {
+        this.result[varName] = {
+          value: this.ownResult,
+          offset: this.buf.premitiveLength,
+          start: this.buf.offset,
+        };
+      } else {
+        this.result[varName] = this.ownResult;
+      }
     }
 
     updateStatus() {
@@ -404,6 +427,7 @@ class array extends Processor {
   initialize() {
     this.ownResult = [];
     this.defineType();
+    this.start = this.buf.offset;
   }
 
   defineType() {
@@ -464,11 +488,11 @@ class array extends Processor {
           subOptions.length = this.generateLength(subOptions.length);
         }
         const stringParser = new Telegram().string("tmp", subOptions);
-        const { result: str_result } = stringParser.parse(this.buf, {});
+        const { result: str_result } = stringParser.parse(this.buf, {}, this.needStart);
         this.ownItemResult = str_result.tmp;
         break;
       case "Telegram":
-        const { result: new_result } = this.type.parse(this.buf, {});
+        const { result: new_result } = this.type.parse(this.buf, {}, this.needStart);
         this.ownItemResult = new_result;
         break;
       default:
@@ -478,6 +502,19 @@ class array extends Processor {
 
   pushItem() {
     this.ownResult.push(this.ownItemResult);
+  }
+
+  store() {
+    const { varName } = this.item;
+    if (this.needStart) {
+      this.result[varName] = {
+        value: this.ownResult,
+        offset: this.buf.offset - this.start,
+        start: this.start,
+      };
+    } else {
+      this.result[varName] = this.ownResult;
+    }
   }
 
   updateItemStatus() {
@@ -735,6 +772,10 @@ class nest extends Processor {
     this.ownResult = {};
   }
 
+  initialize() {
+    this.start = this.buf.offset;
+  }
+
   realParse() {
     let {
       options: { type },
@@ -755,7 +796,15 @@ class nest extends Processor {
   store() {
     const { varName } = this.item;
     if (varName) {
-      this.result[varName] = this.ownResult;
+      if (this.needStart) {
+        this.result[varName] = {
+          value: this.ownResult,
+          offset: this.buf.offset - this.start,
+          start: this.start,
+        };
+      } else {
+        this.result[varName] = this.ownResult;
+      }
     } else {
       Object.assign(this.result, this.ownResult);
     }
@@ -902,7 +951,16 @@ class string extends Processor {
 
   store() {
     const { varName } = this.item;
-    this.result[varName] = this.ownResult;
+
+    if (this.needStart) {
+      this.result[varName] = {
+        value: this.ownResult,
+        offset: this.isZeroTerminated ? this.stringLength + 1 : this.stringLength,
+        start: this.buf.offset,
+      };
+    } else {
+      this.result[varName] = this.ownResult;
+    }
   }
 
   updateStatus() {
