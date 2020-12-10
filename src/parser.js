@@ -388,7 +388,7 @@ Object.keys(PRIMITIVE_TYPES).forEach(type => {
       if (this.needStart) {
         this.result[varName] = {
           value: this.ownResult,
-          offset: this.buf.premitiveLength,
+          length: this.buf.premitiveLength,
           start: this.buf.offset,
         };
       } else {
@@ -509,7 +509,7 @@ class array extends Processor {
     if (this.needStart) {
       this.result[varName] = {
         value: this.ownResult,
-        offset: this.buf.offset - this.start,
+        length: this.buf.offset - this.start,
         start: this.start,
       };
     } else {
@@ -799,7 +799,7 @@ class nest extends Processor {
       if (this.needStart) {
         this.result[varName] = {
           value: this.ownResult,
-          offset: this.buf.offset - this.start,
+          length: this.buf.offset - this.start,
           start: this.start,
         };
       } else {
@@ -955,7 +955,7 @@ class string extends Processor {
     if (this.needStart) {
       this.result[varName] = {
         value: this.ownResult,
-        offset: this.isZeroTerminated ? this.stringLength + 1 : this.stringLength,
+        length: this.isZeroTerminated ? this.stringLength + 1 : this.stringLength,
         start: this.buf.offset,
       };
     } else {

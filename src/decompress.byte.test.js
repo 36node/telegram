@@ -21,37 +21,37 @@ test("should decompress tcp header buffer with right byte position", () => {
     length: 18,
     result: {
       ack: {
-        offset: 4,
+        length: 4,
         start: 8,
         value: 1025537387,
       },
       checksum: {
-        offset: 2,
+        length: 2,
         start: 14,
         value: 65,
       },
       dstPort: {
-        offset: 2,
+        length: 2,
         start: 2,
         value: 993,
       },
       seq: {
-        offset: 4,
+        length: 4,
         start: 4,
         value: 148994017,
       },
       srcPort: {
-        offset: 2,
+        length: 2,
         start: 0,
         value: 59554,
       },
       urgentPointer: {
-        offset: 2,
+        length: 2,
         start: 16,
         value: 0,
       },
       windowSize: {
-        offset: 2,
+        length: 2,
         start: 12,
         value: 10707,
       },
