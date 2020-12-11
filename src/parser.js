@@ -13,6 +13,23 @@ let parserClasses = {};
  */
 let compresserClasses = {};
 
+/**
+ * byte decompress 模式下，一些方法需要将已经按byte位置decompress的数据转化为原始数据
+ */
+const formatNeedStartData = (bufferResult, needStart) => {
+  const result = JSON.parse(JSON.stringify(bufferResult));
+
+  if (needStart) {
+    for (let i in result) {
+      if (result[i].value) {
+        result[i] = result[i].value;
+      }
+    }
+  }
+
+  return result;
+};
+
 export default class Telegram {
   constructor() {
     this.chain = [];
@@ -255,7 +272,8 @@ class Processor {
   formatter(item) {
     const options = typeof item !== "undefined" ? item.options : this.item.options;
     if (options && typeof options.formatter === "function") {
-      this.ownResult = options.formatter.call(this, this.ownResult);
+      const ownResult = formatNeedStartData(this.ownResult, this.needStart);
+      this.ownResult = options.formatter.call(this, ownResult);
     }
     return;
   }
@@ -266,7 +284,8 @@ class Processor {
       let isEqual = true;
       switch (typeof options.assert) {
         case "function":
-          isEqual = options.assert.call(this, this.ownResult);
+          const ownResult = formatNeedStartData(this.ownResult, this.needStart);
+          isEqual = options.assert.call(this, ownResult);
           break;
         case "number":
         case "string":
@@ -307,9 +326,10 @@ class Processor {
     if (typeof option === "number") {
       length = option;
     } else if (typeof option === "function") {
-      length = option.call(this, this.result);
+      const result = formatNeedStartData(this.result, this.needStart);
+      length = option.call(this, result);
     } else if (typeof option === "string") {
-      if (this.needStart) {
+      if (this.needStart && this.result[option].value) {
         length = this.result[option].value;
       } else {
         length = this.result[option];
@@ -634,12 +654,14 @@ class bits extends Processor {
     if (!isBigEndian) {
       this.swap(bitLength);
     }
+    this.start = this.buf.offset;
   }
 
-  parse(buf, result, item) {
+  parse(buf, result, item, needStart) {
     this.buf = buf;
     this.result = result;
     this.item = item;
+    this.needStart = needStart;
     this.initialize();
     this.realParse();
   }
@@ -704,6 +726,16 @@ class bits extends Processor {
       options: { length },
     } = this.bitItem;
     this.calcBitOffset(length);
+
+    // needStart 模式下，计算完对应 bit offset 后再处理数据
+    if (this.needStart) {
+      const { varName } = this.bitItem;
+      this.result[varName] = {
+        value: this.ownResult,
+        length: this.buf.offset - this.start,
+        start: this.start,
+      };
+    }
   }
 }
 
@@ -783,14 +815,15 @@ class nest extends Processor {
 
     // 支持函数
     if (typeof type === "function") {
-      type = type.call(this, this.result);
+      const result = formatNeedStartData(this.result, this.needStart);
+      type = type.call(this, result);
     }
 
     if (!type instanceof Telegram) {
       throw new Error("Type option of nest must be a Telegram object.");
     }
 
-    type.parse(this.buf, this.ownResult);
+    type.parse(this.buf, this.ownResult, this.needStart);
   }
 
   store() {
