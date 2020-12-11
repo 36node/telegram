@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.1](https://github.com/36node/telegram/compare/v0.4.0...v0.4.1) (2020-12-11)
+
+
+### Bug Fixes
+
+* update generate length logic for byte mode ([#18](https://github.com/36node/telegram/issues/18)) ([e8bc287](https://github.com/36node/telegram/commit/e8bc287))
+
+
+
 ## [0.4.0](https://github.com/36node/telegram/compare/v0.3.15...v0.4.0) (2020-12-10)
 
 
