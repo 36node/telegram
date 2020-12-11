@@ -654,12 +654,14 @@ class bits extends Processor {
     if (!isBigEndian) {
       this.swap(bitLength);
     }
+    this.start = this.buf.offset;
   }
 
-  parse(buf, result, item) {
+  parse(buf, result, item, needStart) {
     this.buf = buf;
     this.result = result;
     this.item = item;
+    this.needStart = needStart;
     this.initialize();
     this.realParse();
   }
@@ -724,6 +726,16 @@ class bits extends Processor {
       options: { length },
     } = this.bitItem;
     this.calcBitOffset(length);
+
+    // needStart 模式下，计算完对应 bit offset 后再处理数据
+    if (this.needStart) {
+      const { varName } = this.bitItem;
+      this.result[varName] = {
+        value: this.ownResult,
+        length: this.buf.offset - this.start,
+        start: this.start,
+      };
+    }
   }
 }
 
